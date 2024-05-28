@@ -5,18 +5,33 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 )
 
 func handleConnection(conn net.Conn) {
 	// free up memory by closing connection once satisfied
 	defer conn.Close()
+	buf := make([]byte, 1024)
+	conn.Read(buf)
 
-	response := "HTTP/1.1 200 OK\r\n\r\n"
+	bufString := strings.Split(string(buf), "\n")
+
+	req := strings.Split(bufString[0], " ")
+	// headers := strings.Split(bufString[1], " ")
+
+	// method := req[0]
+	path := req[1]
+	// version := req[2]
+	fmt.Printf("Path is %s\n", path)
+
+	var response string = "HTTP/1.1 404 Not Found\r\n\r\n"
+	if path == "/" {
+		response = "HTTP/1.1 200 OK\r\n\r\n"
+	}
 
 	if _, err := conn.Write([]byte(response)); err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 func main() {
