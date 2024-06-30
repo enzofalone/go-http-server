@@ -2,14 +2,14 @@ package handlers
 
 import "github.com/enzofalone/go-http-server/app/http"
 
-func NotFound() string {
+func NotFound(req http.Request) string {
 	return http.RespondWithStatus("", http.StatusNotFound)
 }
 
-func GenericError() string {
+func GenericError(req http.Request) string {
 	return http.RespondWithStatus("", http.StatusInternalServerError)
 }
 
-func BadRequest() string {
+func BadRequest(req http.Request) string {
 	return http.RespondWithStatus("", http.StatusBadRequest)
 }

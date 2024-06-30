@@ -18,7 +18,7 @@ import (
 // second hashmap for methods supported by that path
 // as a result, it returns a function
 // eg: handleFuncs["/user"]["GET"] -> GetUserHandler()
-var handleFuncs = make(map[string]map[string]func() string)
+var handleFuncs = make(map[string]map[string]func(http.Request) string)
 
 // main function that dissects request into variables
 // also finds which handler to use based on path/request
@@ -37,40 +37,90 @@ func resolveConnection(conn net.Conn) {
 	method := req[0]
 	path := req[1]
 
-	// check if there are path parameters
-	// do this
-
-	response := execHandler(method, path)
-
-	// if path == "/" {
-	// 	response = "HTTP/1.1 200 OK\r\n\r\n"
-	// } delete this
+	response := findHandler(path, method)
 
 	if _, err := conn.Write([]byte(response)); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func findHandler(method string, path string) bool {
-	_, ok := handleFuncs[path][method]
-	return ok
+// function that finds and executes handler matched by pathname
+func findHandler(path string, method string) string {
+	// iterate over every route
+	for route, methodHandlers := range handleFuncs {
+		queryParams := extractQueryParams(path)
+		params := extractParams(path, route)
+
+		req := http.Request{QueryParams: queryParams, Params: params}
+
+		// execute if:
+		// path is exact
+		// path extracts params from route
+		if path == route || params != nil {
+			methodHandler, ok := methodHandlers[method]
+
+			if !ok {
+				return handlers.NotFound(http.Request{})
+			}
+
+			return methodHandler(req)
+		}
+	}
+	return handlers.NotFound(http.Request{})
 }
 
-// based on method and path of request, execute handler previously set up in setupHandlers function
-func execHandler(method string, path string) string {
-	handlerFunc, ok := handleFuncs[path][method]
+func extractQueryParams(path string) map[string]string {
+	splitPath := strings.Split(path, "?")
+	if len(splitPath) == 1 {
+		return nil
+	}
+	queryParamsArr := strings.Split(splitPath[1], "&")
 
-	if ok {
-		return handlerFunc()
+	m := make(map[string]string)
+
+	for _, queryParam := range queryParamsArr {
+		slice := strings.Split(queryParam, "=")
+
+		k := slice[0]
+		v := slice[1]
+
+		m[k] = v
 	}
 
-	// path does not exist
-	return handlers.NotFound()
+	return m
+}
+
+func extractParams(path string, route string) map[string]string {
+	params := make(map[string]string)
+
+	pathParts := strings.Split(path, "/")
+	routeParts := strings.Split(route, "/")
+
+	if len(pathParts) != len(routeParts) {
+		return nil
+	}
+
+	for i, routePart := range routeParts {
+		// found param
+		if strings.HasPrefix(routePart, ":") {
+			paramName := routePart[1:]
+			paramValue := pathParts[i]
+
+			params[paramName] = paramValue
+		} else if routeParts[i] != pathParts[i] {
+			// at some point it does not match
+			return nil
+		}
+	}
+
+	return params
 }
 
 // function to add handler into handlerFuncs with error checking
 // TODO: maybe add tests???
-func addHandler(method string, path string, handleFunc func() string) {
+// TODO: i believe it is important for handlers that have path parameters
+// to have some sort of collision check within the handleFuncs maps
+func addHandler(method string, path string, handleFunc func(http.Request) string) {
 	if method != http.MethodGET &&
 		method != http.MethodPOST &&
 		method != http.MethodUPDATE &&
@@ -80,7 +130,7 @@ func addHandler(method string, path string, handleFunc func() string) {
 
 	// initialize inner method map for every new path
 	if handleFuncs[path] == nil {
-		handleFuncs[path] = make(map[string]func() string)
+		handleFuncs[path] = make(map[string]func(http.Request) string)
 	}
 
 	// handle duplicate paths
@@ -92,6 +142,8 @@ func addHandler(method string, path string, handleFunc func() string) {
 }
 
 func setupHandlers() {
+	addHandler(http.MethodGET, "/", handlers.GenericError)
+	addHandler(http.MethodGET, "/echo/:str", handlers.HandleEcho)
 	addHandler(http.MethodGET, "/ping", handlers.HandleHealth)
 }
 
