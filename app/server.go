@@ -48,8 +48,15 @@ func resolveConnection(conn net.Conn) {
 func findHandler(path string, method string) string {
 	// iterate over every route
 	for route, methodHandlers := range handleFuncs {
-		queryParams := extractQueryParams(path)
-		params := extractParams(path, route)
+		// trim query params
+		splitPath := strings.Split(path, "?")
+
+		var queryParams map[string]string
+		if len(splitPath) != 1 {
+			queryParams = mapQueryParams(splitPath[1])
+		}
+
+		params := mapParams(splitPath[0], route)
 
 		req := http.Request{QueryParams: queryParams, Params: params}
 
@@ -67,53 +74,6 @@ func findHandler(path string, method string) string {
 		}
 	}
 	return handlers.NotFound(http.Request{})
-}
-
-func extractQueryParams(path string) map[string]string {
-	splitPath := strings.Split(path, "?")
-	if len(splitPath) == 1 {
-		return nil
-	}
-	queryParamsArr := strings.Split(splitPath[1], "&")
-
-	m := make(map[string]string)
-
-	for _, queryParam := range queryParamsArr {
-		slice := strings.Split(queryParam, "=")
-
-		k := slice[0]
-		v := slice[1]
-
-		m[k] = v
-	}
-
-	return m
-}
-
-func extractParams(path string, route string) map[string]string {
-	params := make(map[string]string)
-
-	pathParts := strings.Split(path, "/")
-	routeParts := strings.Split(route, "/")
-
-	if len(pathParts) != len(routeParts) {
-		return nil
-	}
-
-	for i, routePart := range routeParts {
-		// found param
-		if strings.HasPrefix(routePart, ":") {
-			paramName := routePart[1:]
-			paramValue := pathParts[i]
-
-			params[paramName] = paramValue
-		} else if routeParts[i] != pathParts[i] {
-			// at some point it does not match
-			return nil
-		}
-	}
-
-	return params
 }
 
 // function to add handler into handlerFuncs with error checking
