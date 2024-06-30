@@ -11,6 +11,7 @@ This go app is an HTTP server created from scratch(ish?) by creating a TCP serve
 - [x] Response body
 - [x] Path parameters
 - [x] Query parameters
-- [ ] read POST requests
+- [ ] Read POST requests
+- [ ] Timeout requests
 - [ ] Caching
 - [ ] Rate limiting
