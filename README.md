@@ -9,6 +9,7 @@ This go app is an HTTP server created from scratch(ish?) by creating a TCP serve
 - [x] Handling of different paths
 - [x] Path parameters
 - [x] Response body
+- [x] Path parameters
 - [x] Query parameters
 - [ ] read POST requests
 - [ ] Caching
